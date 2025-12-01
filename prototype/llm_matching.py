@@ -11,7 +11,7 @@ script_dir = Path(__file__).parent
 project_root = script_dir.parent
 
 # Read award text
-award_file = project_root / "data" / "output" / "5.01_Teaching Excellence.txt"
+award_file = project_root / "data" / "output" / "5.02_Research Excellence.txt"
 with open(award_file, "r", encoding="utf-8") as f:
     award_text = f.read()
 
