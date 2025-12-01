@@ -1,4 +1,5 @@
 import pymupdf
+import pandas as pd
 from pathlib import Path
 
 def extract_text_from_pdf(pdf_path: str) -> str:
@@ -6,18 +7,20 @@ def extract_text_from_pdf(pdf_path: str) -> str:
     Extracts and returns all text from a given PDF file.
     """
     text_content = []
-    doc = pymupdf.open(pdf_path)
-    for page in doc:
-        text_content.append(page.get_text())
-
-    return "\n".join(text_content)
-
+    try:
+        doc = pymupdf.open(pdf_path)
+        for page in doc:
+            text_content.append(page.get_text())
+        return "\n".join(text_content)
+    except Exception as e:
+        print(f"Error reading {pdf_path}: {e}")
+        return ""
 
 if __name__ == "__main__":
-    # Process all PDFs in data/CV/
+    # Define paths
     cv_dir = Path("data/CV")
     output_dir = Path("data/output")
-    output_file = output_dir / "cv_text.txt"
+    output_file = output_dir / "cv_data.csv"
     
     # Create output directory
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -25,18 +28,27 @@ if __name__ == "__main__":
     # Get all PDF files
     pdf_files = sorted(cv_dir.glob("*.pdf"))
     
-    # Extract and concatenate text from all PDFs
-    all_text = []
+    if not pdf_files:
+        print("No PDF files found in data/CV/")
+        exit()
+
+    # Data collection list
+    data = []
+
     for pdf_file in pdf_files:
         print(f"Processing {pdf_file.name}...")
         text = extract_text_from_pdf(str(pdf_file))
-        all_text.append(f"\n\n{'='*80}\n")
-        all_text.append(f"FILE: {pdf_file.name}\n")
-        all_text.append(f"{'='*80}\n\n")
-        all_text.append(text)
+        
+        # Only add if text was actually extracted
+        if text.strip():
+            data.append({
+                "filename": pdf_file.name,
+                "text": text
+            })
     
-    # Write to output file
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write("".join(all_text))
+    # Create DataFrame and save to CSV
+    df = pd.DataFrame(data)
+    df.to_csv(output_file, index=False)
     
-    print(f"\nExtracted text from {len(pdf_files)} PDFs and saved to {output_file}")
+    print(f"\nProcessed {len(df)} PDFs.")
+    print(f"Data saved to: {output_file}")
