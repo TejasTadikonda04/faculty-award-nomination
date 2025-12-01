@@ -7,13 +7,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 
-# --- CONFIGURATION ---
-TOP_K_CHUNKS = 10  # Number of relevant chunks to retrieve
+# Configuration
+TOP_K_CHUNKS = 10  # Chunks to retrieve
 MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
 
 def load_resources(output_dir: Path):
     """
-    Loads the FAISS index and metadata JSON.
+    Load faiss index and metadata.
     """
     faiss_path = output_dir / "cv_index.faiss"
     metadata_path = output_dir / "cv_metadata.json"
@@ -26,32 +26,29 @@ def load_resources(output_dir: Path):
     
     with open(metadata_path, 'r', encoding='utf-8') as f:
         metadata = json.load(f)
-        # Convert keys to integers for easier lookup later
+        # Convert keys to integers
         metadata = {int(k): v for k, v in metadata.items()}
 
     return index, metadata
 
 def get_relevant_context(award_text: str, index, metadata, model, k: int) -> str:
     """
-    Embeds the award text, searches the index, and formats the results.
+    Embed text and search index.
     """
     print("Embedding award text and searching index...")
     
-    # 1. Embed the query (Award Text)
+    # Embed query
     query_embedding = model.encode([award_text])
     query_embedding = np.array(query_embedding).astype('float32')
 
-    # 2. Search FAISS
-    # distances: how close the match is (smaller is better for L2)
-    # indices: the IDs of the matching vectors
+    # Search index
     distances, indices = index.search(query_embedding, k)
     
-    # 3. Retrieve and Organize Hits
-    # We want to group chunks by professor so the LLM gets a coherent view
+    # Group chunks by filename
     hits_by_professor = {}
     
     for idx in indices[0]:
-        if idx == -1: continue # FAISS returns -1 if not enough neighbors found
+        if idx == -1: continue # Skip invalid indices
         
         record = metadata.get(idx)
         if record:
@@ -62,7 +59,7 @@ def get_relevant_context(award_text: str, index, metadata, model, k: int) -> str
                 hits_by_professor[filename] = []
             hits_by_professor[filename].append(text_chunk)
 
-    # 4. Format into a string for the Prompt
+    # Format prompt context
     context_str = ""
     for filename, chunks in hits_by_professor.items():
         context_str += f"### CANDIDATE: {filename}\n"
@@ -74,7 +71,7 @@ def get_relevant_context(award_text: str, index, metadata, model, k: int) -> str
     return context_str, list(hits_by_professor.keys())
 
 def main():
-    # 1. SETUP
+    # Setup
     load_dotenv()
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
@@ -85,12 +82,11 @@ def main():
     project_root = script_dir.parent
     data_output = project_root / "data" / "output"
     
-    # Define Input Files
-    # In a real app, this would be dynamic. For prototype, we point to one.
+    # Define input files
     award_file = data_output / "5.02_Research Excellence.txt" 
     prompt_file = script_dir / "prompts" / "award_to_cvs_prompt.md"
 
-    # 2. LOAD RESOURCES
+    # Load resources
     try:
         index, metadata = load_resources(data_output)
         model = SentenceTransformer(MODEL_NAME)
@@ -98,7 +94,7 @@ def main():
         print(e)
         return
 
-    # 3. READ INPUTS
+    # Read input files
     print(f"Reading award: {award_file.name}")
     with open(award_file, "r", encoding="utf-8") as f:
         award_text = f.read()
@@ -106,15 +102,15 @@ def main():
     with open(prompt_file, "r", encoding="utf-8") as f:
         prompt_template = f.read().strip()
 
-    # 4. RETRIEVE
+    # Retrieve matches
     context_string, matched_files = get_relevant_context(award_text, index, metadata, model, TOP_K_CHUNKS)
     
     print(f"Found relevant matches in: {matched_files}")
 
-    # 5. CONSTRUCT PROMPT
+    # Construct prompt
     final_prompt = prompt_template.replace("{AWARD_TEXT}", award_text).replace("{CV_TEXT}", context_string)
 
-    # 6. LLM CALL
+    # Call api
     print("Calling LLM for evaluation...")
     response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
@@ -122,12 +118,12 @@ def main():
             "Authorization": f"Bearer {api_key}",
         },
         json={
-            "model": "qwen/qwen3-coder:free", # Or your preferred model
+            "model": "qwen/qwen3-coder:free", # Model selection
             "messages": [{"role": "user", "content": final_prompt}]
         }
     )
 
-    # 7. OUTPUT
+    # Handle response
     data = response.json()
     if "choices" in data:
         result_text = data["choices"][0]["message"]["content"]

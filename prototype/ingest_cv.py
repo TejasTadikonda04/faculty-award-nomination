@@ -6,14 +6,14 @@ import numpy as np
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 
-# --- CONFIGURATION ---
-CHUNK_SIZE = 300      # Number of words per chunk
-CHUNK_OVERLAP = 50    # Overlap between chunks to preserve context
-MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2' # Standard, efficient embedding model
+# Configuration
+CHUNK_SIZE = 300      # Words per chunk
+CHUNK_OVERLAP = 50    # Context overlap
+MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2' # Embedding model
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
     """
-    Extracts raw text from a PDF file using PyMuPDF.
+    Extract text using pymupdf.
     """
     text_content = []
     try:
@@ -27,44 +27,44 @@ def extract_text_from_pdf(pdf_path: Path) -> str:
 
 def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
     """
-    Splits text into overlapping chunks of words.
+    Split text into overlapping chunks.
     """
     words = text.split()
     if not words:
         return []
     
     chunks = []
-    # Slide a window across the list of words
+    # Sliding window loop
     for i in range(0, len(words), chunk_size - overlap):
-        # Create the chunk
+        # Build string
         chunk_words = words[i : i + chunk_size]
         chunk_str = " ".join(chunk_words)
         
-        # Only add non-empty chunks
+        # Skip empty
         if chunk_str.strip():
             chunks.append(chunk_str)
             
-        # Stop if we've reached the end
+        # Check bounds
         if i + chunk_size >= len(words):
             break
             
     return chunks
 
 def main():
-    # 1. SETUP PATHS
+    # Setup paths
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
     
     cv_dir = project_root / "data" / "CV"
     output_dir = project_root / "data" / "output"
     
-    # Ensure output directory exists
+    # Make output dir
     output_dir.mkdir(parents=True, exist_ok=True)
     
     faiss_index_path = output_dir / "cv_index.faiss"
     metadata_path = output_dir / "cv_metadata.json"
 
-    # 2. DISCOVER FILES
+    # Find pdf files
     pdf_files = sorted(list(cv_dir.glob("*.pdf")))
     if not pdf_files:
         print(f"No PDF files found in {cv_dir}")
@@ -72,38 +72,38 @@ def main():
 
     print(f"Found {len(pdf_files)} CVs. Loading embedding model ({MODEL_NAME})...")
 
-    # 3. INITIALIZE MODEL
+    # Load model
     model = SentenceTransformer(MODEL_NAME)
     
-    # Lists to hold data before indexing
+    # Temp buffers
     all_embeddings = []
-    metadata_store = {} # Maps ID (int) -> {filename, text_chunk}
+    metadata_store = {} # Map id to info
     
     vector_id_counter = 0
 
-    # 4. PROCESS FILES
+    # Process files
     print("Processing files...")
     for pdf_file in pdf_files:
-        print(f"  -> Parsing {pdf_file.name}")
+        print(f"   -> Parsing {pdf_file.name}")
         
-        # Extract
+        # Get text
         raw_text = extract_text_from_pdf(pdf_file)
         if not raw_text:
             continue
             
-        # Chunk
+        # Chunk text
         chunks = chunk_text(raw_text, CHUNK_SIZE, CHUNK_OVERLAP)
         
-        # Embed chunks (batch process per file for efficiency)
+        # Get embeddings
         if chunks:
             chunk_embeddings = model.encode(chunks)
             
-            # Store
+            # Save results
             for i, embedding in enumerate(chunk_embeddings):
-                # Add to embeddings list
+                # Append vector
                 all_embeddings.append(embedding)
                 
-                # Add to metadata store
+                # Store metadata
                 metadata_store[vector_id_counter] = {
                     "filename": pdf_file.name,
                     "chunk_id": i,
@@ -115,23 +115,23 @@ def main():
         print("No text extracted/embedded.")
         return
 
-    # 5. CREATE & SAVE FAISS INDEX
+    # Build index
     print(f"Building index with {len(all_embeddings)} vectors...")
     
-    # Convert list to float32 numpy array (required by FAISS)
+    # Convert to float32
     embeddings_matrix = np.array(all_embeddings).astype('float32')
     
-    # Get dimension from the embeddings (e.g., 384 for MiniLM)
+    # Get dimension
     dimension = embeddings_matrix.shape[1]
     
-    # Create Index
+    # Create index
     index = faiss.IndexFlatL2(dimension)
     index.add(embeddings_matrix)
     
-    # Persist Index
+    # Save index
     faiss.write_index(index, str(faiss_index_path))
     
-    # 6. SAVE METADATA
+    # Save metadata
     with open(metadata_path, 'w', encoding='utf-8') as f:
         json.dump(metadata_store, f, indent=2)
 
