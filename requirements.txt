@@ -1,1 +1,8 @@
 pymupdf
+pinecone
+sentence-transformers
+python-dotenv
+requests
+pandas
+openpyxl
+tqdm
