@@ -15,14 +15,14 @@ if sys.platform == 'win32':
 from config import (
     OUTPUT_DIR,
     PROMPTS_DIR,
-    OPENROUTER_API_KEY,
     PINECONE_API_KEY,
     PINECONE_INDEX_NAME,
     PINECONE_NAMESPACE,
     EMBEDDING_MODEL_NAME,
     TOP_K_CHUNKS,
-    LLM_MODEL,
-    LLM_API_URL,
+    TAMU_API_KEY,
+    TAMU_API_BASE,
+    TAMU_MODEL,
     validate_config
 )
 
@@ -98,7 +98,7 @@ def get_relevant_context(award_text: str, index, model, k: int = TOP_K_CHUNKS) -
 
 def call_llm(prompt: str) -> str:
     """
-    Call OpenRouter LLM API with the constructed prompt.
+    Call TAMU AI Chat API with the constructed prompt.
     
     Args:
         prompt: Full prompt text
@@ -106,17 +106,20 @@ def call_llm(prompt: str) -> str:
     Returns:
         LLM response text
     """
-    print(f"Calling LLM ({LLM_MODEL})...")
+    print(f"Calling TAMU AI Chat ({TAMU_MODEL})...")
     
     response = requests.post(
-        LLM_API_URL,
+        f"{TAMU_API_BASE}/chat/completions",
         headers={
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Authorization": f"Bearer {TAMU_API_KEY}",
+            "Content-Type": "application/json"
         },
         json={
-            "model": LLM_MODEL,
-            "messages": [{"role": "user", "content": prompt}]
-        }
+            "model": TAMU_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False  # Disable streaming to get JSON response
+        },
+        timeout=60  # Increase timeout for longer responses
     )
     
     data = response.json()
@@ -124,7 +127,7 @@ def call_llm(prompt: str) -> str:
     if "choices" in data:
         return data["choices"][0]["message"]["content"]
     else:
-        raise Exception(f"LLM API error: {data}")
+        raise Exception(f"TAMU API error: {data}")
 
 
 def match_award_to_faculty(award_file_path: Path, prompt_template_path: Path = None) -> str:
