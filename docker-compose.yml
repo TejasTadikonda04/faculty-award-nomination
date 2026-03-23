@@ -1,0 +1,33 @@
+# Faculty Award Nomination System - Docker Compose
+#
+# Pipeline: extract → ingest → match
+#
+# Usage:
+#   1. Copy .env.example to .env and fill in API keys
+#   2. Place faculty CV PDFs in ./data/cv/
+#   3. Place award Excel files in ./data/awards/
+#
+# Commands:
+#   docker compose run --rm extract-awards   # Extract awards from Excel → data/output/
+#   docker compose run --rm ingest-cvs       # Ingest CVs to Pinecone
+#   docker compose run --rm match-awards     # RAG match: awards → faculty rankings (default)
+
+services:
+  faculty-award:
+    build: .
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    command: ["src.rag_matching"]
+
+  extract-awards:
+    extends: faculty-award
+    command: ["src.award_text_extractor"]
+
+  ingest-cvs:
+    extends: faculty-award
+    command: ["src.ingest_cv"]
+
+  match-awards:
+    extends: faculty-award
+    command: ["src.rag_matching"]

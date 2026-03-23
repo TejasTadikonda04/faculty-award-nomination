@@ -1,0 +1,38 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment secrets (pass via -e or env_file at runtime)
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# IDE and docs
+.idea/
+.vscode/
+*.md
+!README.md
+
+# Local data (mount at runtime instead of baking in)
+data/cv/*.pdf
+data/awards/*.xlsx
+data/awards/*.xls
+data/output/*.txt
+
+# Keep directory structure but not large files
+# (Dockerfile creates empty dirs; user mounts data)
