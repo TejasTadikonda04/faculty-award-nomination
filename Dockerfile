@@ -24,7 +24,7 @@ COPY src/ src/
 RUN mkdir -p data/cv data/awards data/output
 
 # Set Python path so imports work from project root
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/src:/app
 ENV PYTHONUNBUFFERED=1
 
 # Default: run RAG matching (can be overridden)
