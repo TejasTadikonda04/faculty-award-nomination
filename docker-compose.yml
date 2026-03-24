@@ -1,33 +1,56 @@
-# Faculty Award Nomination System - Docker Compose
+# Faculty Award Nomination System
 #
-# Pipeline: extract → ingest → match
+# Full stack (UI + API): one command
+#   docker compose up --build
+#   Open http://localhost:8080 — nginx serves the React app and proxies /api to the API.
 #
-# Usage:
-#   1. Copy .env.example to .env and fill in API keys
-#   2. Place faculty CV PDFs in ./data/cv/
-#   3. Place award Excel files in ./data/awards/
+# Data pipeline jobs (run on demand, not started by default):
+#   docker compose --profile pipeline run --rm extract-awards   # Excel → data/output/
+#   docker compose --profile pipeline run --rm ingest-cvs       # PDFs → Pinecone
+#   docker compose --profile pipeline run --rm match-awards       # CLI RAG match
 #
-# Commands:
-#   docker compose run --rm extract-awards   # Extract awards from Excel → data/output/
-#   docker compose run --rm ingest-cvs       # Ingest CVs to Pinecone
-#   docker compose run --rm match-awards     # RAG match: awards → faculty rankings (default)
+# Prerequisites: copy .env.example to .env; mount ./data for cv, awards, output.
+
+x-app-common: &app-common
+  build: .
+  env_file: .env
+  volumes:
+    - ./data:/app/data
 
 services:
-  faculty-award:
-    build: .
-    env_file: .env
-    volumes:
-      - ./data:/app/data
-    command: ["src.rag_matching"]
+  api:
+    <<: *app-common
+    working_dir: /app/src
+    command:
+      [
+        "uvicorn",
+        "api_server:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+      ]
+    environment:
+      PYTHONPATH: /app/src
+
+  web:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
 
   extract-awards:
-    extends: faculty-award
+    <<: *app-common
+    profiles: [pipeline]
     command: ["src.award_text_extractor"]
 
   ingest-cvs:
-    extends: faculty-award
+    <<: *app-common
+    profiles: [pipeline]
     command: ["src.ingest_cv"]
 
   match-awards:
-    extends: faculty-award
+    <<: *app-common
+    profiles: [pipeline]
     command: ["src.rag_matching"]

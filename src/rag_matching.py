@@ -23,7 +23,8 @@ from config import (
     TAMU_API_KEY,
     TAMU_API_BASE,
     TAMU_MODEL,
-    validate_config
+    validate_config,
+    validate_api_config,
 )
 
 
@@ -39,7 +40,13 @@ def load_pinecone_index():
     return index
 
 
-def get_relevant_context(award_text: str, index, model, k: int = TOP_K_CHUNKS) -> tuple[str, list[str]]:
+def get_relevant_context(
+    award_text: str,
+    index,
+    model,
+    k: int = TOP_K_CHUNKS,
+    department_filter: str | None = None,
+) -> tuple[str, list[str]]:
     """
     Embed award text and retrieve relevant CV chunks from Pinecone.
     
@@ -81,6 +88,14 @@ def get_relevant_context(award_text: str, index, model, k: int = TOP_K_CHUNKS) -
             'text': text_chunk,
             'score': score
         })
+
+    if department_filter and department_filter.strip():
+        needle = department_filter.strip().lower()
+        hits_by_faculty = {
+            name: chunks
+            for name, chunks in hits_by_faculty.items()
+            if needle in name.lower()
+        }
     
     # Format context for prompt
     context_str = ""
@@ -180,6 +195,38 @@ def match_award_to_faculty(award_file_path: Path, prompt_template_path: Path = N
     result = call_llm(final_prompt)
     
     return result
+
+
+def match_award_text_to_faculty(
+    award_text: str,
+    index,
+    model,
+    top_k: int = TOP_K_CHUNKS,
+    department_filter: str | None = None,
+    prompt_template_path: Path | None = None,
+) -> str:
+    """
+    Same RAG pipeline as match_award_to_faculty but accepts raw award/criteria text.
+    """
+    validate_api_config()
+    if prompt_template_path is None:
+        prompt_template_path = PROMPTS_DIR / "nominator_top10_prompt.md"
+    if not prompt_template_path.exists():
+        prompt_template_path = PROMPTS_DIR / "award_to_cvs_prompt.md"
+    with open(prompt_template_path, "r", encoding="utf-8") as f:
+        prompt_template = f.read().strip()
+    context_string, matched_faculty = get_relevant_context(
+        award_text, index, model, k=top_k, department_filter=department_filter
+    )
+    if not matched_faculty:
+        return (
+            "No faculty CV excerpts were retrieved. "
+            "Check Pinecone data, increase retrieval size, or relax the department filter."
+        )
+    final_prompt = prompt_template.replace("{AWARD_TEXT}", award_text).replace(
+        "{CV_TEXT}", context_string
+    )
+    return call_llm(final_prompt)
 
 
 def main():
