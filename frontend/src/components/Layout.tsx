@@ -30,12 +30,7 @@ export function Layout({ children }: { children: ReactNode }) {
         )}
       </header>
       <main className="main">{children}</main>
-      <footer className="footer">
-        <p>
-          Texas A&amp;M–styled demo UI · Matching uses your backend RAG pipeline
-          (Pinecone CVs + TAMU AI).
-        </p>
-      </footer>
+      <footer className="footer" />
     </div>
   );
 }

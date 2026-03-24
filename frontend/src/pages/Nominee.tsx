@@ -83,10 +83,6 @@ export function Nominee() {
     <div className="page two-col">
       <section className="panel">
         <h2 className="panel-title">Award catalog</h2>
-        <p className="panel-intro">
-          Files come from <code>data/output</code> after you run the Excel
-          extractor. Search by title or keywords.
-        </p>
         {health && (
           <p
             className={

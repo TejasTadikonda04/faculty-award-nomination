@@ -37,9 +37,7 @@ export function Nominator() {
       <section className="panel card-elevated">
         <h2 className="panel-title">Committee matching</h2>
         <p className="panel-intro">
-          Describe the award or paste official criteria. The backend embeds your
-          text, pulls the closest CV chunks from Pinecone, and asks the TAMU AI
-          model for a top-ten style ranking with reasoning.
+          Describe the award or paste the official criteria.
         </p>
         {health && (
           <p
@@ -75,10 +73,6 @@ export function Nominator() {
           onChange={(e) => setDepartment(e.target.value)}
           placeholder="Substring of faculty / CV filename stem (e.g. department keyword)"
         />
-        <p className="hint">
-          CVs are keyed by PDF filename in Pinecone metadata; use a substring that
-          appears in those names to narrow the pool before the LLM step.
-        </p>
 
         <button
           type="button"
