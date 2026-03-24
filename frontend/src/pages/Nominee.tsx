@@ -134,11 +134,6 @@ export function Nominee() {
         <hr className="divider" />
 
         <h3 className="subhead">Résumé match preview</h3>
-        <p className="panel-intro">
-          Paste CV or biosketch text. The app embeds it with the same model as
-          ingestion and ranks extracted award descriptions by cosine similarity
-          (fast, local scoring — not the LLM).
-        </p>
         <textarea
           className="textarea"
           rows={10}
