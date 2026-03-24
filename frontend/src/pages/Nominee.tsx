@@ -1,13 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   getAward,
+  getCvText,
   getHealth,
   listAwards,
+  listCvs,
   matchResume,
   type AwardSummary,
   type Health,
   type ResumeMatch,
 } from "../api/client";
+
+function formatCvName(filename: string): string {
+  return filename
+    .replace(".pdf", "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 export function Nominee() {
   const [health, setHealth] = useState<Health | null>(null);
@@ -20,7 +29,11 @@ export function Nominee() {
   const [detailText, setDetailText] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const [resume, setResume] = useState("");
+  const [cvFiles, setCvFiles] = useState<string[]>([]);
+  const [selectedCv, setSelectedCv] = useState("");
+  const [cvLoading, setCvLoading] = useState(false);
+  const [cvText, setCvText] = useState("");
+
   const [matches, setMatches] = useState<ResumeMatch[] | null>(null);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchError, setMatchError] = useState<string | null>(null);
@@ -38,6 +51,12 @@ export function Nominee() {
       .then(setAwards)
       .catch((e) => setListError(e instanceof Error ? e.message : "Load failed"))
       .finally(() => setLoadingList(false));
+  }, []);
+
+  useEffect(() => {
+    listCvs()
+      .then(setCvFiles)
+      .catch(() => setCvFiles([]));
   }, []);
 
   const filtered = useMemo(() => {
@@ -65,12 +84,29 @@ export function Nominee() {
     }
   }
 
+  async function handleCvSelect(filename: string) {
+    setSelectedCv(filename);
+    setCvText("");
+    setMatches(null);
+    setMatchError(null);
+    if (!filename) return;
+    setCvLoading(true);
+    try {
+      const { text } = await getCvText(filename);
+      setCvText(text);
+    } catch {
+      setMatchError("Could not extract text from this CV.");
+    } finally {
+      setCvLoading(false);
+    }
+  }
+
   async function runMatch() {
     setMatchError(null);
     setMatches(null);
     setMatchLoading(true);
     try {
-      const m = await matchResume(resume, 10);
+      const m = await matchResume(cvText, 10);
       setMatches(m);
     } catch (e) {
       setMatchError(e instanceof Error ? e.message : "Match failed");
@@ -84,12 +120,8 @@ export function Nominee() {
       <section className="panel">
         <h2 className="panel-title">Award catalog</h2>
         {health && (
-          <p
-            className={
-              health.config_ok ? "status-pill ok" : "status-pill warn"
-            }
-          >
-            API: {health.config_ok ? "keys present" : health.config_error ?? "check .env"} ·{" "}
+          <p className={health.config_ok ? "status-pill ok" : "status-pill warn"}>
+            API: {health.config_ok ? "keys present" : (health.config_error ?? "check .env")} ·{" "}
             {health.awards_extracted_count} award file(s) on disk
           </p>
         )}
@@ -108,9 +140,7 @@ export function Nominee() {
             <li key={a.filename}>
               <button
                 type="button"
-                className={
-                  selected === a.filename ? "award-row active" : "award-row"
-                }
+                className={selected === a.filename ? "award-row active" : "award-row"}
                 onClick={() => void openAward(a.filename)}
               >
                 <span className="award-title">{a.title}</span>
@@ -134,17 +164,25 @@ export function Nominee() {
         <hr className="divider" />
 
         <h3 className="subhead">Résumé match preview</h3>
-        <textarea
-          className="textarea"
-          rows={10}
-          value={resume}
-          onChange={(e) => setResume(e.target.value)}
-          placeholder="Paste your CV text here (at least a few sentences)…"
-        />
+        <label className="label" htmlFor="cv-select">Select a faculty CV</label>
+        <select
+          id="cv-select"
+          className="input"
+          value={selectedCv}
+          onChange={(e) => void handleCvSelect(e.target.value)}
+        >
+          <option value="">— choose a CV —</option>
+          {cvFiles.map((f) => (
+            <option key={f} value={f}>
+              {formatCvName(f)}
+            </option>
+          ))}
+        </select>
+        {cvLoading && <p className="muted">Loading CV…</p>}
         <button
           type="button"
           className="btn primary"
-          disabled={matchLoading || resume.trim().length < 20}
+          disabled={matchLoading || cvLoading || cvText.length < 20}
           onClick={() => void runMatch()}
         >
           {matchLoading ? "Scoring…" : "Find likely award matches"}

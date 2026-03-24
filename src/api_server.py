@@ -15,7 +15,8 @@ from sentence_transformers import SentenceTransformer
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
 
-from config import EMBEDDING_MODEL_NAME, OUTPUT_DIR, validate_api_config
+from config import CV_DIR, EMBEDDING_MODEL_NAME, OUTPUT_DIR, validate_api_config
+from ingest_cv import extract_text_from_pdf
 from nominee_award_match import load_award_documents, match_resume_to_awards
 from rag_matching import load_pinecone_index, match_award_text_to_faculty
 
@@ -150,6 +151,30 @@ def list_awards(q: str | None = Query(None, description="Filter by filename or c
 def get_award(filename: str):
     path = safe_award_path(filename)
     return {"filename": path.name, "text": path.read_text(encoding="utf-8")}
+
+
+@app.get("/api/cvs")
+def list_cvs():
+    if not CV_DIR.exists():
+        return {"cvs": []}
+    files = sorted(CV_DIR.glob("*.pdf"))
+    return {"cvs": [f.name for f in files]}
+
+
+@app.get("/api/cvs/{filename:path}")
+def get_cv(filename: str):
+    name = Path(filename).name
+    path = CV_DIR / name
+    if not path.is_file() or path.suffix.lower() != ".pdf":
+        raise HTTPException(status_code=404, detail="CV not found")
+    try:
+        path.resolve().relative_to(CV_DIR.resolve())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    text = extract_text_from_pdf(path)
+    if not text:
+        raise HTTPException(status_code=422, detail="Could not extract text from PDF")
+    return {"filename": name, "text": text}
 
 
 @app.post("/api/nominee/match-resume")

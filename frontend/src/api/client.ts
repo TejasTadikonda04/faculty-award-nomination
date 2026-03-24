@@ -64,6 +64,19 @@ export async function getAward(filename: string): Promise<{ text: string }> {
   return r.json() as Promise<{ text: string }>;
 }
 
+export async function listCvs(): Promise<string[]> {
+  const r = await fetch(`${base}/api/cvs`);
+  if (!r.ok) throw new Error("Failed to load CVs");
+  const data = (await r.json()) as { cvs: string[] };
+  return data.cvs;
+}
+
+export async function getCvText(filename: string): Promise<{ text: string }> {
+  const r = await fetch(`${base}/api/cvs/${encodeURIComponent(filename)}`);
+  if (!r.ok) throw new Error("Failed to load CV");
+  return r.json() as Promise<{ text: string }>;
+}
+
 export type ResumeMatch = {
   filename: string;
   score: number;
