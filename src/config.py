@@ -62,3 +62,15 @@ def validate_config():
         raise FileNotFoundError(f"CV directory not found: {CV_DIR}")
     
     return True
+
+
+def validate_api_config():
+    """Validate env vars needed for API (RAG + LLM). CV folder is not required."""
+    missing = []
+    if not TAMU_API_KEY:
+        missing.append("TAMU_API_KEY")
+    if not PINECONE_API_KEY:
+        missing.append("PINECONE_API_KEY")
+    if missing:
+        raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+    return True
