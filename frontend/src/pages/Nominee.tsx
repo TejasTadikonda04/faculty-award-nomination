@@ -205,9 +205,8 @@ export function Nominee() {
                 .replace(/\.txt$/i, "")
                 .replace(/_/g, " ")
                 .replace(/-/g, " ")
-                // Remove leading/trailing numeric IDs (e.g. "123 award name" or "award name 456")
-                .replace(/^\d+\s+/, "")
-                .replace(/\s+\d+$/, "")
+                .replace(/^[\d.]+\s+/, "")
+                .replace(/\s+[\d.]+$/, "")
                 .replace(/\b\w/g, (c) => c.toUpperCase())
                 .trim();
               return (
