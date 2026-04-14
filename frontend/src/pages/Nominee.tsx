@@ -193,7 +193,14 @@ export function Nominee() {
         )}
         {matches && matches.length > 0 && (
           <ol className="match-list">
-            {matches.map((m) => {
+            {matches
+              .slice()
+              .sort((a, b) => {
+                const sa = a.match_score ?? a.score * 10;
+                const sb = b.match_score ?? b.score * 10;
+                return sb - sa;
+              })
+              .map((m) => {
               const displayName = m.filename
                 .replace(/\.txt$/i, "")
                 .replace(/_/g, " ")

@@ -145,7 +145,7 @@ export function Nominator() {
               <div className="rank-block">
                 <h3 className="subhead">Ranked faculty</h3>
                 <ol className="rank-list">
-                  {rows.map((r) => (
+                  {rows.slice().sort((a, b) => b.match_score - a.match_score).map((r) => (
                     <li key={`${r.rank}-${r.faculty_name}`}>
                       <div className="rank-head">
                         <span className="rank-num">#{r.rank}</span>
