@@ -188,7 +188,8 @@ def list_awards(q: str | None = Query(None, description="Filter by filename or c
         preview = text.replace("\n", " ")[:280]
         if len(text) > 280:
             preview += "…"
-        title = filename.replace(".txt", "").replace("_", " ")
+        raw_title = filename.replace(".txt", "").replace("_", " ")
+        title = re.sub(r"^[\d.]+\s+", "", raw_title).strip()
         items.append({"filename": filename, "title": title, "preview": preview})
     if q and q.strip():
         needle = q.strip().lower()
