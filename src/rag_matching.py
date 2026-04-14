@@ -46,6 +46,7 @@ def get_relevant_context(
     model,
     k: int = TOP_K_CHUNKS,
     department_filter: str | None = None,
+    max_chunks_per_faculty: int = 5,
 ) -> tuple[str, list[str]]:
     """
     Embed award text and retrieve relevant CV chunks from Pinecone.
@@ -55,6 +56,9 @@ def get_relevant_context(
         index: Pinecone index
         model: SentenceTransformer model
         k: Number of chunks to retrieve
+        max_chunks_per_faculty: Maximum chunks to include per faculty member,
+            preventing a single professor's many chunks from dominating the
+            retrieval budget and crowding out other candidates.
         
     Returns:
         Tuple of (formatted context string, list of matched faculty names)
@@ -72,7 +76,7 @@ def get_relevant_context(
         include_metadata=True
     )
     
-    # Group results by faculty
+    # Group results by faculty, preserving best chunk score per faculty
     hits_by_faculty = {}
     
     for match in results['matches']:
@@ -82,31 +86,45 @@ def get_relevant_context(
         score = match['score']
         
         if faculty_name not in hits_by_faculty:
-            hits_by_faculty[faculty_name] = []
+            hits_by_faculty[faculty_name] = {'chunks': [], 'best_score': score}
         
-        hits_by_faculty[faculty_name].append({
+        hits_by_faculty[faculty_name]['chunks'].append({
             'text': text_chunk,
             'score': score
         })
+        # Track the best (highest) chunk score for ranking faculty
+        if score > hits_by_faculty[faculty_name]['best_score']:
+            hits_by_faculty[faculty_name]['best_score'] = score
 
     if department_filter and department_filter.strip():
         needle = department_filter.strip().lower()
         hits_by_faculty = {
-            name: chunks
-            for name, chunks in hits_by_faculty.items()
+            name: data
+            for name, data in hits_by_faculty.items()
             if needle in name.lower()
         }
-    
+
+    # Sort faculty by best chunk score descending, then cap chunks per faculty
+    sorted_faculty = sorted(
+        hits_by_faculty.items(),
+        key=lambda item: item[1]['best_score'],
+        reverse=True,
+    )
+
     # Format context for prompt
     context_str = ""
-    for faculty_name, chunks in hits_by_faculty.items():
+    for faculty_name, data in sorted_faculty:
+        # Keep only the top-scoring chunks for this faculty member
+        top_chunks = sorted(data['chunks'], key=lambda c: c['score'], reverse=True)
+        top_chunks = top_chunks[:max_chunks_per_faculty]
+
         context_str += f"### CANDIDATE: {faculty_name}\n"
         context_str += "RELEVANT EXCERPTS:\n"
-        for i, chunk_data in enumerate(chunks, 1):
+        for chunk_data in top_chunks:
             context_str += f"...{chunk_data['text']}...\n"
         context_str += "\n"
     
-    faculty_names = list(hits_by_faculty.keys())
+    faculty_names = [name for name, _ in sorted_faculty]
     
     return context_str, faculty_names
 
