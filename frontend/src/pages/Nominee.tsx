@@ -211,7 +211,7 @@ export function Nominee() {
                       {(m.score * 100).toFixed(1)}% similarity
                     </span>
                   </div>
-                  <p className="match-prev">{m.preview}</p>
+                  <p className="match-prev">{m.reasoning || m.preview}</p>
                 </li>
               );
             })}

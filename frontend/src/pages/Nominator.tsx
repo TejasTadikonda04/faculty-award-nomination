@@ -24,6 +24,7 @@ export function Nominator() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<RankingRow[] | null>(null);
+  const [rawResponse, setRawResponse] = useState<string | null>(null);
 
   useEffect(() => {
     getHealth()
@@ -72,10 +73,12 @@ export function Nominator() {
     if (!awardText) return;
     setError(null);
     setRows(null);
+    setRawResponse(null);
     setLoading(true);
     try {
       const res = await rankFaculty(awardText);
       setRows(res.rankings);
+      setRawResponse(res.raw_response);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
     } finally {
@@ -153,6 +156,13 @@ export function Nominator() {
                     </li>
                   ))}
                 </ol>
+              </div>
+            )}
+
+            {!loading && !error && rawResponse && (!rows || rows.length === 0) && (
+              <div className="rank-block">
+                <h3 className="subhead">LLM Response</h3>
+                <pre className="detail-block">{rawResponse}</pre>
               </div>
             )}
 
