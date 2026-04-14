@@ -23,7 +23,6 @@ export function Nominator() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [raw, setRaw] = useState<string | null>(null);
   const [rows, setRows] = useState<RankingRow[] | null>(null);
 
   useEffect(() => {
@@ -58,7 +57,6 @@ export function Nominator() {
     setDetailLoading(true);
     setAwardText(null);
     setRows(null);
-    setRaw(null);
     setError(null);
     try {
       const { text } = await getAward(award.filename);
@@ -73,12 +71,10 @@ export function Nominator() {
   async function run() {
     if (!awardText) return;
     setError(null);
-    setRaw(null);
     setRows(null);
     setLoading(true);
     try {
       const res = await rankFaculty(awardText);
-      setRaw(res.raw_response);
       setRows(res.rankings);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
@@ -160,12 +156,6 @@ export function Nominator() {
               </div>
             )}
 
-            {raw && (!rows || rows.length === 0) && (
-              <div className="rank-block">
-                <h3 className="subhead">Model output</h3>
-                <pre className="detail-block">{raw}</pre>
-              </div>
-            )}
           </>
         )}
       </section>

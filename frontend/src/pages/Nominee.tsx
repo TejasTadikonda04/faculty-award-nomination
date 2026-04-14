@@ -193,17 +193,28 @@ export function Nominee() {
         )}
         {matches && matches.length > 0 && (
           <ol className="match-list">
-            {matches.map((m) => (
-              <li key={m.filename}>
-                <div className="match-head">
-                  <span className="match-name">{m.filename.replace(".txt", "")}</span>
-                  <span className="match-score">
-                    {(m.score * 100).toFixed(1)}% similarity
-                  </span>
-                </div>
-                <p className="match-prev">{m.preview}</p>
-              </li>
-            ))}
+            {matches.map((m) => {
+              const displayName = m.filename
+                .replace(/\.txt$/i, "")
+                .replace(/_/g, " ")
+                .replace(/-/g, " ")
+                // Remove leading/trailing numeric IDs (e.g. "123 award name" or "award name 456")
+                .replace(/^\d+\s+/, "")
+                .replace(/\s+\d+$/, "")
+                .replace(/\b\w/g, (c) => c.toUpperCase())
+                .trim();
+              return (
+                <li key={m.filename}>
+                  <div className="match-head">
+                    <span className="match-name">{displayName}</span>
+                    <span className="match-score">
+                      {(m.score * 100).toFixed(1)}% similarity
+                    </span>
+                  </div>
+                  <p className="match-prev">{m.preview}</p>
+                </li>
+              );
+            })}
           </ol>
         )}
       </section>
