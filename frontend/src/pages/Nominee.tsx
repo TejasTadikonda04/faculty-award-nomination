@@ -208,7 +208,7 @@ export function Nominee() {
                   <div className="match-head">
                     <span className="match-name">{displayName}</span>
                     <span className="match-score">
-                      {(m.score * 100).toFixed(1)}% similarity
+                      Score {m.match_score ?? (m.score * 10).toFixed(1)}/10
                     </span>
                   </div>
                   <p className="match-prev">{m.reasoning || m.preview}</p>

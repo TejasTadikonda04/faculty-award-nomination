@@ -128,12 +128,18 @@ def generate_nominee_reasoning(
         parsed = parse_nominator_json(raw)
         if parsed and "matches" in parsed:
             reasoning_map = {
-                r["filename"]: r["reasoning"]
+                r["filename"]: {
+                    "reasoning": r.get("reasoning", ""),
+                    "match_score": r.get("match_score"),
+                }
                 for r in parsed["matches"]
-                if "filename" in r and "reasoning" in r
+                if "filename" in r
             }
             for m in matches:
-                m["reasoning"] = reasoning_map.get(m["filename"], "")
+                entry = reasoning_map.get(m["filename"], {})
+                m["reasoning"] = entry.get("reasoning", "")
+                if entry.get("match_score") is not None:
+                    m["match_score"] = entry["match_score"]
     except Exception as e:
         print(f"Nominee reasoning LLM call failed: {e}")
         # Leave matches without reasoning
