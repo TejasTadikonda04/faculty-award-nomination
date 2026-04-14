@@ -193,17 +193,34 @@ export function Nominee() {
         )}
         {matches && matches.length > 0 && (
           <ol className="match-list">
-            {matches.map((m) => (
-              <li key={m.filename}>
-                <div className="match-head">
-                  <span className="match-name">{m.filename.replace(".txt", "")}</span>
-                  <span className="match-score">
-                    {(m.score * 100).toFixed(1)}% similarity
-                  </span>
-                </div>
-                <p className="match-prev">{m.preview}</p>
-              </li>
-            ))}
+            {matches
+              .slice()
+              .sort((a, b) => {
+                const sa = a.match_score ?? a.score * 10;
+                const sb = b.match_score ?? b.score * 10;
+                return sb - sa;
+              })
+              .map((m) => {
+              const displayName = m.filename
+                .replace(/\.txt$/i, "")
+                .replace(/_/g, " ")
+                .replace(/-/g, " ")
+                .replace(/^[\d.]+\s+/, "")
+                .replace(/\s+[\d.]+$/, "")
+                .replace(/\b\w/g, (c) => c.toUpperCase())
+                .trim();
+              return (
+                <li key={m.filename}>
+                  <div className="match-head">
+                    <span className="match-name">{displayName}</span>
+                    <span className="match-score">
+                      Score {m.match_score ?? (m.score * 10).toFixed(1)}/10
+                    </span>
+                  </div>
+                  <p className="match-prev">{m.reasoning || m.preview}</p>
+                </li>
+              );
+            })}
           </ol>
         )}
       </section>

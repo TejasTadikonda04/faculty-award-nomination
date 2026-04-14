@@ -15,10 +15,10 @@ from sentence_transformers import SentenceTransformer
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
 
-from config import CV_DIR, EMBEDDING_MODEL_NAME, OUTPUT_DIR, validate_api_config
+from config import CV_DIR, EMBEDDING_MODEL_NAME, OUTPUT_DIR, PROMPTS_DIR, validate_api_config
 from ingest_cv import extract_text_from_pdf
 from nominee_award_match import load_award_documents, match_resume_to_awards
-from rag_matching import load_pinecone_index, match_award_text_to_faculty
+from rag_matching import call_llm, load_pinecone_index, match_award_text_to_faculty
 
 # Heavier retrieval so multiple faculty appear in context for top-10 ranking
 NOMINATOR_TOP_K = 120
@@ -92,6 +92,61 @@ def parse_nominator_json(raw: str) -> dict | None:
         return None
 
 
+def generate_nominee_reasoning(
+    resume_text: str,
+    matches: list[dict],
+) -> list[dict]:
+    """
+    Use the LLM to add a `reasoning` field to each match dict.
+    Makes a single LLM call for all matched awards.
+    """
+    prompt_path = PROMPTS_DIR / "nominee_reasoning_prompt.md"
+    if not prompt_path.exists():
+        return matches  # no prompt template → return as-is
+
+    template = prompt_path.read_text(encoding="utf-8").strip()
+
+    # Build award context from matched files
+    all_docs = {fn: txt for fn, txt in load_award_documents()}
+    awards_block = ""
+    for m in matches:
+        fn = m["filename"]
+        body = all_docs.get(fn, m.get("preview", ""))
+        awards_block += f"### AWARD: {fn}\n{body[:600]}\n\n"
+
+    # Truncate CV to keep prompt manageable
+    cv_snippet = resume_text[:3000]
+
+    prompt = (
+        template
+        .replace("{CV_TEXT}", cv_snippet)
+        .replace("{AWARDS_TEXT}", awards_block)
+    )
+
+    try:
+        raw = call_llm(prompt)
+        parsed = parse_nominator_json(raw)
+        if parsed and "matches" in parsed:
+            reasoning_map = {
+                r["filename"]: {
+                    "reasoning": r.get("reasoning", ""),
+                    "match_score": r.get("match_score"),
+                }
+                for r in parsed["matches"]
+                if "filename" in r
+            }
+            for m in matches:
+                entry = reasoning_map.get(m["filename"], {})
+                m["reasoning"] = entry.get("reasoning", "")
+                if entry.get("match_score") is not None:
+                    m["match_score"] = entry["match_score"]
+    except Exception as e:
+        print(f"Nominee reasoning LLM call failed: {e}")
+        # Leave matches without reasoning
+
+    return matches
+
+
 class NomineeMatchRequest(BaseModel):
     resume_text: str = Field(..., min_length=20)
     top_n: int = Field(10, ge=1, le=30)
@@ -133,7 +188,8 @@ def list_awards(q: str | None = Query(None, description="Filter by filename or c
         preview = text.replace("\n", " ")[:280]
         if len(text) > 280:
             preview += "…"
-        title = filename.replace(".txt", "").replace("_", " ")
+        raw_title = filename.replace(".txt", "").replace("_", " ")
+        title = re.sub(r"^[\d.]+\s+", "", raw_title).strip()
         items.append({"filename": filename, "title": title, "preview": preview})
     if q and q.strip():
         needle = q.strip().lower()
@@ -186,6 +242,12 @@ def nominee_match_resume(body: NomineeMatchRequest):
             status_code=503,
             detail="No award text files in data/output. Run extract-awards with Excel in data/awards.",
         )
+    # Generate LLM reasoning for each matched award
+    try:
+        validate_api_config()
+        matches = generate_nominee_reasoning(body.resume_text, matches)
+    except (ValueError, Exception) as e:
+        print(f"Skipping nominee reasoning (LLM unavailable): {e}")
     return {"matches": matches}
 
 

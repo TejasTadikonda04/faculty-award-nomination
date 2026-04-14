@@ -9,7 +9,7 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="shell">
       <header className="topbar">
         <Link to="/" className="brand">
-          <span className="brand-mark" aria-hidden />
+          <img src="/tamu-logo.png" alt="Texas A&M University" className="brand-mark" />
           <span className="brand-text">
             <span className="brand-title">Research Awards</span>
             <span className="brand-sub">Faculty nomination workspace</span>

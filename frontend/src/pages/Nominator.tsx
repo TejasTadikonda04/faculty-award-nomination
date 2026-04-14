@@ -23,8 +23,8 @@ export function Nominator() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [raw, setRaw] = useState<string | null>(null);
   const [rows, setRows] = useState<RankingRow[] | null>(null);
+  const [rawResponse, setRawResponse] = useState<string | null>(null);
 
   useEffect(() => {
     getHealth()
@@ -58,7 +58,6 @@ export function Nominator() {
     setDetailLoading(true);
     setAwardText(null);
     setRows(null);
-    setRaw(null);
     setError(null);
     try {
       const { text } = await getAward(award.filename);
@@ -73,13 +72,13 @@ export function Nominator() {
   async function run() {
     if (!awardText) return;
     setError(null);
-    setRaw(null);
     setRows(null);
+    setRawResponse(null);
     setLoading(true);
     try {
       const res = await rankFaculty(awardText);
-      setRaw(res.raw_response);
       setRows(res.rankings);
+      setRawResponse(res.raw_response);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
     } finally {
@@ -146,7 +145,7 @@ export function Nominator() {
               <div className="rank-block">
                 <h3 className="subhead">Ranked faculty</h3>
                 <ol className="rank-list">
-                  {rows.map((r) => (
+                  {rows.slice().sort((a, b) => b.match_score - a.match_score).map((r) => (
                     <li key={`${r.rank}-${r.faculty_name}`}>
                       <div className="rank-head">
                         <span className="rank-num">#{r.rank}</span>
@@ -160,12 +159,13 @@ export function Nominator() {
               </div>
             )}
 
-            {raw && (!rows || rows.length === 0) && (
+            {!loading && !error && rawResponse && (!rows || rows.length === 0) && (
               <div className="rank-block">
-                <h3 className="subhead">Model output</h3>
-                <pre className="detail-block">{raw}</pre>
+                <h3 className="subhead">LLM Response</h3>
+                <pre className="detail-block">{rawResponse}</pre>
               </div>
             )}
+
           </>
         )}
       </section>

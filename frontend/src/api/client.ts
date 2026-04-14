@@ -81,6 +81,8 @@ export type ResumeMatch = {
   filename: string;
   score: number;
   preview: string;
+  reasoning?: string;
+  match_score?: number;
 };
 
 export async function matchResume(
