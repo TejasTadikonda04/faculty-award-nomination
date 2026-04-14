@@ -68,10 +68,13 @@ code {
 }
 
 .brand-mark {
-  height: 42px;
+  height: 38px;
   width: auto;
   display: block;
   object-fit: contain;
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 8px;
 }
 
 .brand-text {
