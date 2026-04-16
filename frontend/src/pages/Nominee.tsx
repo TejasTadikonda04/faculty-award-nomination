@@ -37,6 +37,7 @@ export function Nominee() {
   const [matches, setMatches] = useState<ResumeMatch[] | null>(null);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchError, setMatchError] = useState<string | null>(null);
+  const [customRules, setCustomRules] = useState("");
 
   useEffect(() => {
     getHealth()
@@ -106,7 +107,7 @@ export function Nominee() {
     setMatches(null);
     setMatchLoading(true);
     try {
-      const m = await matchResume(cvText, 10);
+      const m = await matchResume(cvText, 10, customRules || undefined);
       setMatches(m);
     } catch (e) {
       setMatchError(e instanceof Error ? e.message : "Match failed");
@@ -179,6 +180,16 @@ export function Nominee() {
           ))}
         </select>
         {cvLoading && <p className="muted">Loading CV…</p>}
+        <details className="custom-rules-details">
+          <summary className="custom-rules-summary">Custom rules <span className="custom-rules-hint">(optional — appended to the LLM prompt)</span></summary>
+          <textarea
+            className="textarea"
+            placeholder="e.g. Prefer awards that relate to teaching. Exclude awards requiring doctoral students."
+            value={customRules}
+            onChange={(e) => setCustomRules(e.target.value)}
+            rows={4}
+          />
+        </details>
         <button
           type="button"
           className="btn primary"

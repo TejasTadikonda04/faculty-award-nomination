@@ -222,6 +222,7 @@ def match_award_text_to_faculty(
     top_k: int = TOP_K_CHUNKS,
     department_filter: str | None = None,
     prompt_template_path: Path | None = None,
+    custom_rules: str | None = None,
 ) -> str:
     """
     Same RAG pipeline as match_award_to_faculty but accepts raw award/criteria text.
@@ -244,6 +245,8 @@ def match_award_text_to_faculty(
     final_prompt = prompt_template.replace("{AWARD_TEXT}", award_text).replace(
         "{CV_TEXT}", context_string
     )
+    if custom_rules and custom_rules.strip():
+        final_prompt += f"\n\n---\n\n**ADDITIONAL RULES (user-defined):**\n{custom_rules.strip()}"
     return call_llm(final_prompt)
 
 

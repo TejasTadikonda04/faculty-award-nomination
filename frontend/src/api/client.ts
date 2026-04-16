@@ -88,11 +88,12 @@ export type ResumeMatch = {
 export async function matchResume(
   resumeText: string,
   topN = 10,
+  customRules?: string,
 ): Promise<ResumeMatch[]> {
   const r = await fetch(`${base}/api/nominee/match-resume`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ resume_text: resumeText, top_n: topN }),
+    body: JSON.stringify({ resume_text: resumeText, top_n: topN, custom_rules: customRules || null }),
   });
   if (!r.ok) throw new Error(await readErrorMessage(r));
   const data = (await r.json()) as { matches: ResumeMatch[] };
@@ -109,6 +110,7 @@ export type RankingRow = {
 export async function rankFaculty(
   criteriaText: string,
   department?: string,
+  customRules?: string,
 ): Promise<{ raw_response: string; rankings: RankingRow[] | null }> {
   const r = await fetch(`${base}/api/nominator/rank-faculty`, {
     method: "POST",
@@ -116,6 +118,7 @@ export async function rankFaculty(
     body: JSON.stringify({
       criteria_text: criteriaText,
       department: department?.trim() || null,
+      custom_rules: customRules || null,
     }),
   });
   if (!r.ok) throw new Error(await readErrorMessage(r));

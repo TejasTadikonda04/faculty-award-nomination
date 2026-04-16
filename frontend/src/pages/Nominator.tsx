@@ -25,6 +25,7 @@ export function Nominator() {
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<RankingRow[] | null>(null);
   const [rawResponse, setRawResponse] = useState<string | null>(null);
+  const [customRules, setCustomRules] = useState("");
 
   useEffect(() => {
     getHealth()
@@ -76,7 +77,7 @@ export function Nominator() {
     setRawResponse(null);
     setLoading(true);
     try {
-      const res = await rankFaculty(awardText);
+      const res = await rankFaculty(awardText, undefined, customRules || undefined);
       setRows(res.rankings);
       setRawResponse(res.raw_response);
     } catch (e) {
@@ -131,6 +132,16 @@ export function Nominator() {
         {selected && !detailLoading && awardText && (
           <>
             <p className="panel-intro">{selectedTitle}</p>
+            <details className="custom-rules-details">
+              <summary className="custom-rules-summary">Custom rules <span className="custom-rules-hint">(optional — appended to the LLM prompt)</span></summary>
+              <textarea
+                className="textarea"
+                placeholder="e.g. Only consider professors who have won a national award. Prefer candidates from the Department of Industrial Engineering."
+                value={customRules}
+                onChange={(e) => setCustomRules(e.target.value)}
+                rows={4}
+              />
+            </details>
             <button
               type="button"
               className="btn primary"

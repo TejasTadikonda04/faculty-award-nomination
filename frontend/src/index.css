@@ -310,6 +310,44 @@ code {
   margin: -0.25rem 0 0.85rem;
 }
 
+.custom-rules-details {
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.custom-rules-summary {
+  padding: 0.65rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--maroon-deep);
+  cursor: pointer;
+  user-select: none;
+  background: #f9f9fa;
+}
+
+.custom-rules-summary:hover {
+  background: #f3f3f5;
+}
+
+.custom-rules-hint {
+  font-weight: normal;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-left: 0.5rem;
+}
+
+.custom-rules-details .textarea {
+  border: none;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  margin-bottom: 0;
+  background: #fff;
+  min-height: 80px;
+}
+
 .btn {
   font: inherit;
   cursor: pointer;

@@ -95,6 +95,7 @@ def parse_nominator_json(raw: str) -> dict | None:
 def generate_nominee_reasoning(
     resume_text: str,
     matches: list[dict],
+    custom_rules: str | None = None,
 ) -> list[dict]:
     """
     Use the LLM to add a `reasoning` field to each match dict.
@@ -122,6 +123,8 @@ def generate_nominee_reasoning(
         .replace("{CV_TEXT}", cv_snippet)
         .replace("{AWARDS_TEXT}", awards_block)
     )
+    if custom_rules and custom_rules.strip():
+        prompt += f"\n\n---\n\n**ADDITIONAL RULES (user-defined):**\n{custom_rules.strip()}"
 
     try:
         raw = call_llm(prompt)
@@ -150,6 +153,7 @@ def generate_nominee_reasoning(
 class NomineeMatchRequest(BaseModel):
     resume_text: str = Field(..., min_length=20)
     top_n: int = Field(10, ge=1, le=30)
+    custom_rules: str | None = Field(None)
 
 
 class NominatorRankRequest(BaseModel):
@@ -158,6 +162,7 @@ class NominatorRankRequest(BaseModel):
         None,
         description="Optional substring to filter faculty names (filename stems in Pinecone)",
     )
+    custom_rules: str | None = Field(None)
 
 
 @app.get("/api/health")
@@ -245,7 +250,7 @@ def nominee_match_resume(body: NomineeMatchRequest):
     # Generate LLM reasoning for each matched award
     try:
         validate_api_config()
-        matches = generate_nominee_reasoning(body.resume_text, matches)
+        matches = generate_nominee_reasoning(body.resume_text, matches, custom_rules=body.custom_rules)
     except (ValueError, Exception) as e:
         print(f"Skipping nominee reasoning (LLM unavailable): {e}")
     return {"matches": matches}
@@ -265,6 +270,7 @@ def nominator_rank(body: NominatorRankRequest):
         model,
         top_k=NOMINATOR_TOP_K,
         department_filter=body.department,
+        custom_rules=body.custom_rules,
     )
     parsed = parse_nominator_json(raw)
     return {"raw_response": raw, "rankings": parsed.get("rankings") if parsed else None}
